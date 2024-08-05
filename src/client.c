@@ -1,21 +1,11 @@
 // (C) Thomas Baumeister, 2024
 // For further information read the comment at the end of the file.
 
-#include <string.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <netdb.h>
+#include "client.h"
 
-#define PORT "3490"
+// Description: todo
 
-#define MAXDATASIZE 100
-
-int main(int argc, char *argv[]) {
+int create_client() {
     int sock_fd, numbytes;
     char buf[MAXDATASIZE]; 
     struct addrinfo hints, *servinfo, *p;
@@ -25,7 +15,7 @@ int main(int argc, char *argv[]) {
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    
+
     if ((rv = getaddrinfo("localhost", PORT, &hints, &servinfo)) == -1) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return -1;
@@ -51,12 +41,12 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Client: failed to connect!\n");
         return 2;
     } 
-    
+
     inet_ntop(p->ai_family, &((struct sockaddr_in *)p->ai_addr)->sin_addr, s, sizeof s); 
     printf("Client: connected to: %s\n", s);
 
     freeaddrinfo(servinfo);
-    
+
     // handle user input  
     char input[1024];
     for(;;) {
@@ -82,4 +72,8 @@ int main(int argc, char *argv[]) {
     close(sock_fd);
 
     return 0;
+}
+
+int main(void) {
+    return create_client();
 }

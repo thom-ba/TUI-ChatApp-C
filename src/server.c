@@ -1,23 +1,7 @@
 // (C) Thomas Baumeister, 2024
 // For further information read the comment at the end of the file.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/wait.h>
-#include <signal.h>
-
-#define BACKLOG 5
-#define ADDR "127.0.0.1"
-#define PORT "3490"
+#include "server.h"
 
 void *to_sockaddr_in(struct sockaddr *sa) {
     return &(((struct sockaddr_in*)sa)->sin_addr);
@@ -55,7 +39,7 @@ int open_bind_socket() {
     set_sock_opt(sock_fd);
 
     bind(sock_fd, res->ai_addr, res->ai_addrlen);
-    
+
     free(res);
 
     return sock_fd;
@@ -63,15 +47,14 @@ int open_bind_socket() {
 
 int get_listener(int sock_fd) {
     listen(sock_fd, BACKLOG); 
-    
+
     return sock_fd;
 }
-
 
 void add_to_pfds(struct pollfd *pfds[], int new_fd, int *fd_count, int *fd_size) { 
     if (*fd_count == *fd_size) {
         *fd_size *= 2;
-        
+
         *pfds = realloc(*pfds, sizeof(**pfds) * (*fd_size));
     }
 
@@ -105,12 +88,12 @@ int send_all(int fd, char *buf, int *len) {
     int total_sent = 0;
     int bytes_left = *len;
     int n;
-   
+
     while(total_sent < *len) {
         if((n = send(fd, buf + total_sent, bytes_left, 0)) == -1) {
             break;
         }
-        
+
         total_sent += n;
         bytes_left -= n;
     }
@@ -120,7 +103,7 @@ int send_all(int fd, char *buf, int *len) {
     return n==-1?-1:0;
 }
 
-int main(){
+int create_server() {
     char client_ip[INET6_ADDRSTRLEN];
     char buf[256];
 
@@ -195,7 +178,7 @@ int main(){
                         printf("Server: received data: %s\n", buf);
                         for (int j = 0; j < fd_count; j++) {
                             int dst_fd = pfds[i].fd;
-                            
+
                             if (dst_fd != listener && dst_fd != sender_fd) {
                                 int len = strlen(buf);
                                 if (send_all(dst_fd, buf, &len) == 1) {
@@ -208,4 +191,8 @@ int main(){
             } // END got an event
         } // END looping through file descriptors
     } // END for(;;)
+}
+
+int main(void) {
+    return create_server();
 }
