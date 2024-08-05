@@ -45,37 +45,46 @@ void* handle_input(void *arg) {
 
         }
 
-        bzero(input, sizeof(input));
+        memset(input, 0, sizeof(input));
     }
 
     return NULL;
 }
 
-
-int create_client() {
-    int sock_fd;
-    struct addrinfo hints, *servinfo, *p;
+struct addrinfo *get_server_info() { 
+    struct addrinfo hints, *servinfo;
     int rv;
-    char s[INET6_ADDRSTRLEN];
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+    memset(&hints, 0, sizeof hints); // make sure the struct is empty
+    hints.ai_family = AF_UNSPEC;    // use any address family
+    hints.ai_socktype = SOCK_STREAM; // use TCP
 
-    if ((rv = getaddrinfo("localhost", PORT, &hints, &servinfo)) == -1) {
+    if ( (rv = getaddrinfo(ADDR, PORT, &hints, &servinfo) ) == -1) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return -1;
+        exit(1);
     }
 
+    return servinfo;
+}
+
+void network_to_string(char *s, const struct addrinfo *p)  {
+    inet_ntop(p->ai_family, &((struct sockaddr_in *)p->ai_addr)->sin_addr, s, sizeof *s);
+}
+
+void create_and_connect_socket(int *sock_fd) {
+    char s[INET6_ADDRSTRLEN];
+    struct addrinfo *p;
+    
+    struct addrinfo *servinfo = get_server_info();
     for (p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sock_fd = socket(p->ai_family, p->ai_socktype,
+        if ((*sock_fd = socket(p->ai_family, p->ai_socktype,
                         p->ai_protocol)) == -1) {
             perror("Client: socket");
             continue;
         }
 
-        if(connect(sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sock_fd);
+        if(connect(*sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(*sock_fd);
             perror("Client: connect");
             continue;
         }
@@ -85,37 +94,47 @@ int create_client() {
 
     if (p == NULL) {
         fprintf(stderr, "Client: failed to connect!\n");
-        return 2;
-    } 
-
-    inet_ntop(p->ai_family, &((struct sockaddr_in *)p->ai_addr)->sin_addr, s, sizeof s); 
+        exit(2);
+    }
+    
+    network_to_string(s, p);
     printf("Client: connected to: %s\n", s);
+}
+
+
+void create_client() {
+    int sock_fd;
+   
+    struct addrinfo *servinfo = get_server_info(); 
+    create_and_connect_socket(&sock_fd); 
 
     freeaddrinfo(servinfo);
 
     // receive message
     int receive_fd = sock_fd;
     pthread_t receive_thread; 
-    int t_rm = pthread_create(&receive_thread, NULL,  &handle_receive_message, &receive_fd);
-
+    if (pthread_create(&receive_thread, NULL,  &handle_receive_message, &receive_fd) != 0) {
+        perror("pthread_create");
+        exit(1);
+    }
 
     // handle user input and sen
     int send_fd = sock_fd;
     pthread_t input_thread;
-    int t_hi = pthread_create(&input_thread, NULL, &handle_input, (void*) &send_fd);
+    if (pthread_create(&input_thread, NULL, &handle_input, (void*) &send_fd) != 0) {
+        perror("pthread_create");
+        exit(1);
+    }
 
     pthread_join(receive_thread, NULL);
     pthread_join(input_thread, NULL); 
 
     // close the connection to the server
-
-    return sock_fd;
+    close(sock_fd);
 }
 
 int main(void) {
-    int sock_fd = create_client();
-
-    close(sock_fd);
+    create_client();
 
     return EXIT_SUCCESS;
 }

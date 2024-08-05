@@ -5,27 +5,14 @@
 #define SERVER_H
 
 // Standard Libraries
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
 #include <poll.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
 
-// Custom Defines
-#define BACKLOG 5
-#define ADDR "127.0.0.1"
-#define PORT "3490"
+#include "common.h"
 
 // Function Prototypes
-
 void *to_sockaddr_in(struct sockaddr *sa);
 
 void sigchld_handler(int s);

@@ -4,21 +4,21 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-// Standard Libraries
-#include <string.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <netdb.h>
 #include <pthread.h>
 
-// Custom Defines
-#define PORT "3490" // should be defined in server_h only
-#define MAXDATASIZE 100
+#include "common.h"
 
+// Function Prototypes
+void* handle_receive_message(void* arg);
+
+void* handle_input(void *arg);
+
+struct addrinfo *get_server_info();
+
+void network_to_string(char *s, const struct addrinfo *p);
+
+void create_and_connect_socket(int *sock_fd);
+
+void create_client();
 
 #endif // CLIENT_H
