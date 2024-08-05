@@ -14,11 +14,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <netdb.h>
-#include <pthread.h>
 
 // Custom Defines
-#define PORT "3490" // should be defined in server_h only
+#define PORT "3490"
 #define MAXDATASIZE 100
-
 
 #endif // CLIENT_H

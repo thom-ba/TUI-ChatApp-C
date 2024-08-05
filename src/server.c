@@ -94,8 +94,6 @@ int send_all(int fd, char *buf, int *len) {
             break;
         }
 
-        printf("Server: sent %d bytes\n", n);
-
         total_sent += n;
         bytes_left -= n;
     }
@@ -163,7 +161,6 @@ int create_server() {
                     }
 
                 } else {
-                    memset(buf, 0, sizeof(buf)); 
                     int nbytes = recv(pfds[i].fd, buf, sizeof buf, 0);
                     int sender_fd = pfds[i].fd;
 
@@ -178,19 +175,16 @@ int create_server() {
                         del_from_pfds(pfds, i, &fd_count);
 
                     } else { // We got data from client
+                        printf("Server: received data: %s\n", buf);
                         for (int j = 0; j < fd_count; j++) {
-                            int dst_fd = pfds[j].fd;
+                            int dst_fd = pfds[i].fd;
 
-                            // Except the listener and ourselves
                             if (dst_fd != listener && dst_fd != sender_fd) {
-                                printf("Debug: nbytes: %d\n", nbytes);
-                                printf("Debug: buf: %s\n", buf);
-                                if (send(dst_fd, buf, nbytes, 0) == -1) {
+                                int len = strlen(buf);
+                                if (send_all(dst_fd, buf, &len) == 1) {
                                     perror("send");
                                 }
                             }
-
-                            // need to clear the buffer, otherwise we just overwrite it the next time 
                         } 
                     }
                 } // END handle data from poll
