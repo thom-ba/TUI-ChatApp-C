@@ -103,6 +103,7 @@ int send_all(int fd, char *buf, int *len) {
     return n==-1?-1:0;
 }
 
+// TODO: BIG TODO: This is a mess, needs to be cleaned up
 void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_size) {
     char client_ip[INET6_ADDRSTRLEN];
     struct sockaddr_storage client_addr;
@@ -164,12 +165,15 @@ void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_s
     } // END handle data from poll
 }
 
+void init_poll_info(Poll_Info *pi) {
+    pi->fd_count = 0;
+    pi->fd_size = FD_START_SIZE;
+    pi->pfds = malloc(sizeof *pi->pfds * pi->fd_size);
+}
 
 int create_server() {
-    int fd_count = 0;
-    int fd_size = 5;
-
-    struct pollfd *pfds = malloc(sizeof *pfds * fd_size);
+    Poll_Info poll_info;
+    init_poll_info(&poll_info);
 
     int sock_fd;
     int listener;
@@ -178,23 +182,23 @@ int create_server() {
     listener = get_listener(sock_fd);    
     ash_williams();
 
-    pfds[0].fd = listener;
-    pfds[0].events = POLLIN;
-    fd_count = 1;
+    poll_info.pfds[0].fd = listener;
+    poll_info.pfds[0].events = POLLIN;
+    poll_info.fd_count = 1;
 
     printf("Server: Waiting for connections on: %s ...\n", ADDR);
 
     for(;;)
     {
-        int poll_count = poll(pfds, fd_count, -1);
+        int poll_count = poll(poll_info.pfds, poll_info.fd_count, -1);
         if (poll_count == -1) {
             perror("poll");
             exit(1);
         }
 
-        for (int i = 0; i < fd_count; i++) { // Loop through all file_descriptors
-            if (pfds[i].revents & POLLIN) { // We got an event
-              on_poll(sock_fd, pfds, i, fd_count, fd_size); 
+        for (int i = 0; i < poll_info.fd_count; i++) { // Loop through all file_descriptors
+            if (poll_info.pfds[i].revents & POLLIN) { // We got an event
+              on_poll(sock_fd, poll_info.pfds, i, poll_info.fd_count, poll_info.fd_size); 
                
             } // END got an event
         } // END looping through file descriptors

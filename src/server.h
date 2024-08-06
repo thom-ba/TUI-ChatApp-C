@@ -12,6 +12,15 @@
 
 #include "common.h"
 
+#define FD_START_SIZE 5 
+
+// Structs
+typedef struct {
+    int fd_count;
+    int fd_size;
+    struct pollfd *pfds;
+} Poll_Info;
+
 // Function Prototypes
 void *to_sockaddr_in(struct sockaddr *sa);
 
