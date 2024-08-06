@@ -1,5 +1,5 @@
-// (C) Thomas Baumeister, 2024
-// For further information read the comment at the end of the file.
+//   (C) Thomas Baumeister, 2024  : "4
+//   For more information, see the public domain dedication at the end of this file.
 
 #include "server.h"
 
@@ -24,8 +24,7 @@ void set_sock_opt(int sock_fd)  {
     }
 }
 
-int open_bind_socket() {
-    int sock_fd;
+void open_bind_socket(int *sock_fd) {
     struct addrinfo hints, *res;
 
     memset(&hints, 0, sizeof(hints));
@@ -34,15 +33,13 @@ int open_bind_socket() {
     hints.ai_flags = AI_PASSIVE;
 
     getaddrinfo(ADDR, PORT, &hints, &res);
-    sock_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol); 
+    *sock_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol); 
 
-    set_sock_opt(sock_fd);
+    set_sock_opt(*sock_fd);
 
-    bind(sock_fd, res->ai_addr, res->ai_addrlen);
+    bind(*sock_fd, res->ai_addr, res->ai_addrlen);
 
     free(res);
-
-    return sock_fd;
 }
 
 int get_listener(int sock_fd) {
@@ -70,6 +67,7 @@ void del_from_pfds(struct pollfd pfds[], int i, int *fd_count) {
     (*fd_count)--;
 }
 
+// Ash Williams is the sigchld_handler and will clean up zombies
 void ash_williams() {
     struct sigaction sa;
 
@@ -105,23 +103,78 @@ int send_all(int fd, char *buf, int *len) {
     return n==-1?-1:0;
 }
 
-int create_server() {
+void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_size) {
     char client_ip[INET6_ADDRSTRLEN];
+    struct sockaddr_storage client_addr;
+    int listener = get_listener(sock_fd);
+    socklen_t addr_len = sizeof(client_addr);
     char buf[256];
 
+    int new_fd; 
+    if (pfds[index].fd == listener) { // Is our listener
+        if ((new_fd = accept(listener, (struct sockaddr *)&client_addr, &addr_len) ) == -1) {
+            perror("accept");
+        }
+        else {
+            add_to_pfds(&pfds, new_fd, &fd_count, &fd_size);
+
+            printf("Pollserver: new connection from %s on socket %d\n", 
+                    inet_ntop(client_addr.ss_family, 
+                        to_sockaddr_in((struct sockaddr*) &client_addr),
+                        client_ip,
+                        INET6_ADDRSTRLEN),
+                    new_fd
+                  );
+
+            if (send(new_fd, "Welcome!", 8, 0) == -1) {
+                perror("welcome");
+            }
+        }
+    } else {
+        memset(buf, 0, sizeof(buf)); 
+        int nbytes = recv(pfds[index].fd, buf, sizeof buf, 0);
+        int sender_fd = pfds[index].fd;
+
+        if (nbytes == 0) { // Got an error or connection closed
+            if (nbytes <= 0) {
+                printf("Pollserver: socket %d hung up\n", sender_fd);
+            } else {
+                perror("recv");
+            }
+
+            close(sender_fd);
+            del_from_pfds(pfds, index, &fd_count);
+
+        } else { // We got data from client
+            for (int j = 0; j < fd_count; j++) {
+                int dst_fd = pfds[j].fd;
+
+                // Except the listener and ourselves
+                if (dst_fd != listener && dst_fd != sender_fd) {
+                    printf("Debug: nbytes: %d\n", nbytes);
+                    printf("Debug: buf: %s\n", buf);
+                    if (send(dst_fd, buf, nbytes, 0) == -1) {
+                        perror("send");
+                    }
+                }
+
+                // need to clear the buffer, otherwise we just overwrite it the next time 
+            } 
+        }
+    } // END handle data from poll
+}
+
+
+int create_server() {
     int fd_count = 0;
     int fd_size = 5;
 
     struct pollfd *pfds = malloc(sizeof *pfds * fd_size);
 
-    struct sockaddr_storage client_addr;
-    socklen_t addr_len;
-
     int sock_fd;
-    int new_fd;
     int listener;
 
-    sock_fd = open_bind_socket();
+    open_bind_socket(&sock_fd);
     listener = get_listener(sock_fd);    
     ash_williams();
 
@@ -141,59 +194,8 @@ int create_server() {
 
         for (int i = 0; i < fd_count; i++) { // Loop through all file_descriptors
             if (pfds[i].revents & POLLIN) { // We got an event
-                if (pfds[i].fd == listener) { // Is our listener
-                    addr_len = sizeof client_addr;
-                    if ( (new_fd = accept(listener, (struct sockaddr *)&client_addr, &addr_len) ) == -1) {
-                        perror("accept");
-                    }
-                    else {
-                        add_to_pfds(&pfds, new_fd, &fd_count, &fd_size);
-
-                        printf("Pollserver: new connection from %s on socket %d\n", 
-                                inet_ntop(client_addr.ss_family, 
-                                    to_sockaddr_in((struct sockaddr*) &client_addr),
-                                    client_ip,
-                                    INET6_ADDRSTRLEN),
-                                new_fd
-                              );
-
-                        if (send(new_fd, "Welcome!", 8, 0) == -1) {
-                            perror("welcome");
-                        }
-                    }
-
-                } else {
-                    memset(buf, 0, sizeof(buf)); 
-                    int nbytes = recv(pfds[i].fd, buf, sizeof buf, 0);
-                    int sender_fd = pfds[i].fd;
-
-                    if (nbytes == 0) { // Got an error or connection closed
-                        if (nbytes <= 0) {
-                            printf("Pollserver: socket %d hung up\n", sender_fd);
-                        } else {
-                            perror("recv");
-                        }
-
-                        close(sender_fd);
-                        del_from_pfds(pfds, i, &fd_count);
-
-                    } else { // We got data from client
-                        for (int j = 0; j < fd_count; j++) {
-                            int dst_fd = pfds[j].fd;
-
-                            // Except the listener and ourselves
-                            if (dst_fd != listener && dst_fd != sender_fd) {
-                                printf("Debug: nbytes: %d\n", nbytes);
-                                printf("Debug: buf: %s\n", buf);
-                                if (send(dst_fd, buf, nbytes, 0) == -1) {
-                                    perror("send");
-                                }
-                            }
-
-                            // need to clear the buffer, otherwise we just overwrite it the next time 
-                        } 
-                    }
-                } // END handle data from poll
+              on_poll(sock_fd, pfds, i, fd_count, fd_size); 
+               
             } // END got an event
         } // END looping through file descriptors
     } // END for(;;)
@@ -202,3 +204,29 @@ int create_server() {
 int main(void) {
     return create_server();
 }
+
+
+// This is free and unencumbered software released into the public domain.
+
+// Anyone is free to copy, modify, publish, use, compile, sell, or
+// distribute this software, either in source code form or as a compiled
+// binary, for any purpose, commercial or non-commercial, and by any
+// means.
+
+// In jurisdictions that recognize copyright laws, the author or authors
+// of this software dedicate any and all copyright interest in the
+// software to the public domain. We make this dedication for the benefit
+// of the public at large and to the detriment of our heirs and
+// successors. We intend this dedication to be an overt act of
+// relinquishment in perpetuity of all present and future rights to this
+// software under copyright law.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+// OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+
+// For more information, please refer to <http://unlicense.org/>

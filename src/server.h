@@ -19,7 +19,7 @@ void sigchld_handler(int s);
 
 void set_sock_opt(int sock_fd);
 
-int open_bind_socket();
+void open_bind_socket(int *sock_fd);
 
 int get_listener(int sock_fd);
 
