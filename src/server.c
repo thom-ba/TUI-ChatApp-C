@@ -42,23 +42,23 @@ void open_bind_socket(int *sock_fd) {
     free(res);
 }
 
+
 int get_listener(int sock_fd) {
     listen(sock_fd, BACKLOG); 
 
     return sock_fd;
 }
+void add_to_pfds(Poll_Info *pi, int new_fd) {
+    if (pi->fd_count == pi->fd_size) {
+        pi->fd_size *= 2;
 
-void add_to_pfds(struct pollfd *pfds[], int new_fd, int *fd_count, int *fd_size) { 
-    if (*fd_count == *fd_size) {
-        *fd_size *= 2;
-
-        *pfds = realloc(*pfds, sizeof(**pfds) * (*fd_size));
+        pi->pfds = realloc(pi->pfds, sizeof(*pi->pfds) * (pi->fd_size));
     }
 
-    (*pfds)[*fd_count].fd = new_fd;
-    (*pfds)[*fd_count].events = POLLIN;
+    (pi->pfds)[pi->fd_count].fd = new_fd;
+    (pi->pfds)[pi->fd_count].events = POLLIN;
 
-    (*fd_count)++;
+    (pi->fd_count)++;
 }
 
 void del_from_pfds(struct pollfd pfds[], int i, int *fd_count) {
@@ -105,93 +105,103 @@ int send_all(int fd, char *buf, int *len) {
 
 
 // TODO: Send from Client
-void send_welcome_message() {
+void broadcast_message(Poll_Info pi, int listener, int sender_fd, int nbytes, char* buf) {
+    printf("Debug: Buffer= %s", buf);
+    printf("Debug: nbytes=%d", nbytes);
+
+    for (int j = 0; j < pi.fd_count; j++) {
+        int dst_fd = pi.pfds[j].fd;
+
+        // Except the listener and ourselves
+        if (dst_fd != listener && dst_fd != sender_fd) {
+            printf("Debug: nbytes: %d\n", nbytes);
+            printf("Debug: buf: %s\n", buf);
+            if (send(dst_fd, buf, nbytes, 0) == -1) {
+                perror("send");
+            }
+
+            /*
+            if (send_all(dst_fd, buf, &nbytes) == -1) {
+                perror("send");
+            }
+            */  
+        }
+    } 
 }
 
-void receive_data_from_client() {
-}
 
-void broadcast_message() {
-}
-
-void close_connection()  {
-
-}
-
-void handle_new_connection(int sock_fd, Poll_Info pi, int listener) {
+void handle_new_connection(Poll_Info *pi, int listener) {
     struct sockaddr_storage client_addr;
     char client_ip[INET_ADDRSTRLEN];
-    socklen_t addr_len; 
-
-    int new_fd; 
-    if ((new_fd = accept(listener, (struct sockaddr *)&client_addr, &addr_len) ) == -1) {
-        perror("accept");
-    }
-    else {
-        add_to_pfds(&pi.pfds, new_fd, &pi.fd_count, &pi.fd_size);
-
-        // TODO: Logging Library
-        printf("Pollserver: new connection from %s on socket %d\n", 
-                inet_ntop(client_addr.ss_family, 
-                    to_sockaddr_in((struct sockaddr*) &client_addr),
-                    client_ip,
-                    INET6_ADDRSTRLEN),
-                new_fd
-              );
-        
-        // Client
-        if (send(new_fd, "Welcome!", 8, 0) == -1) {
-            perror("welcome");
-        }
-    }
-   
-}
-// TODO: BIG TODO: This is a mess, needs to be cleaned up
-void on_poll(int sock_fd, Poll_Info pi, int index) {
-    char client_ip[INET6_ADDRSTRLEN];
-    struct sockaddr_storage client_addr;
-    int listener = get_listener(sock_fd);
     socklen_t addr_len = sizeof(client_addr);
+
+    int new_fd = accept(listener, (struct sockaddr *)&client_addr, &addr_len);
+    if (new_fd == -1) {
+        perror("accept");
+        return;
+    }
+
+    printf("Debug: (Before) fd_count=%d, fd_size=%d\n", pi->fd_count, pi->fd_size);
+    add_to_pfds(pi, new_fd);
+
+    printf("Debug: (After) fd_count=%d, fd_size=%d\n", pi->fd_count, pi->fd_size);
+
+    // Log the new connection
+    printf("Pollserver: new connection from %s on socket %d\n", 
+            inet_ntop(client_addr.ss_family, 
+                to_sockaddr_in((struct sockaddr*)&client_addr),
+                client_ip,
+                sizeof(client_ip)),
+            new_fd
+          );
+
+    // Send a welcome message
+    if (send(new_fd, "Welcome!", 8, 0) == -1) {
+        perror("send");
+    }
+}
+
+// TODO: BIG TODO: This is a mess, needs to be cleaned up
+void on_poll(int listener, Poll_Info *pi, int index) {
     char buf[256];
-
-    int new_fd; 
-    if (pi.pfds[index].fd == listener) { // Is our listener
-        // Handle Connection
-        handle_new_connection(sock_fd, pi, listener);
-    } else {
-        // overwrite the buffer or we overwrite it again
-        memset(buf, 0, sizeof(buf)); 
     
-        // Receive Data from Client  { close_connection else broadcast_message }
-        int nbytes = recv(pi.pfds[index].fd, buf, sizeof buf, 0);
-        int sender_fd = pi.pfds[index].fd;
+    printf("Debug: index=%d, fd=%d\n", index, pi->pfds[index].fd);
+    
+    if (pi->pfds[index].fd == listener) { // Is our listener
+        // Handle new connection
+        printf("Debug: Handling new connection\n");
+        handle_new_connection(pi, listener);
+        
+    } else {
+        printf("Debug: Got data from client\n");
+        
+        // Clear the buffer
+        memset(buf, 0, sizeof(buf));
+    
+        // Receive Data from Client  
+        int nbytes = recv(pi->pfds[index].fd, buf, sizeof(buf), 0);
+        int sender_fd = pi->pfds[index].fd;
 
-        if (nbytes == 0) { // Got an error or connection closed
-            if (nbytes <= 0) {
+        if (nbytes <= 0) { 
+            // Handle error or client disconnection
+            if (nbytes == 0) {
                 printf("Pollserver: socket %d hung up\n", sender_fd);
             } else {
                 perror("recv");
             }
-
+            
             close(sender_fd);
-            del_from_pfds(pi.pfds, index, &pi.fd_count);
+            del_from_pfds(pi->pfds, index, &pi->fd_count);
 
         } else { // We got data from client
-            for (int j = 0; j < pi.fd_count; j++) {
-                int dst_fd = pi.pfds[j].fd;
-
-                // Except the listener and ourselves
-                if (dst_fd != listener && dst_fd != sender_fd) {
-                    printf("Debug: nbytes: %d\n", nbytes);
-                    printf("Debug: buf: %s\n", buf);
-                    if (send(dst_fd, buf, nbytes, 0) == -1) {
-                        perror("send");
-                    }
-                }
-            } 
+            printf("Debug: Broadcasting message\n");
+            broadcast_message(*pi, listener, sender_fd, nbytes, buf);
         }
     } // END handle data from poll
+
+    printf("Debug: Exiting on_poll\n");
 }
+
 
 void init_poll_info(Poll_Info *pi) {
     pi->fd_count = 0;
@@ -201,17 +211,17 @@ void init_poll_info(Poll_Info *pi) {
 
 void create_poll(Poll_Info pi) {
     int poll_count = poll(pi.pfds, pi.fd_count, -1);
+    printf("Debug: count=%d\n", pi.fd_count);
     if (poll_count == -1) {
         perror("poll");
         exit(1);
     }
 }
 
-void check_for_event(Poll_Info poll_info,int sock_fd) {
-    for (int i = 0; i < poll_info.fd_count; i++) { // Loop through all file_descriptors
-        if (poll_info.pfds[i].revents & POLLIN) { // We got an event
-            on_poll(sock_fd, poll_info, i);
-
+void check_for_event(Poll_Info *poll_info, int sock_fd, int listener) {
+    for (int i = 0; i < poll_info->fd_count; i++) { // Loop through all file_descriptors
+        if (poll_info->pfds[i].revents & POLLIN) { // We got an event
+            on_poll(listener, poll_info, i);
         } // END got an event
     } // END looping through file descriptors
 }
@@ -233,10 +243,10 @@ int create_server() {
 
     printf("Server: Waiting for connections on: %s ...\n", ADDR);
 
+    create_poll(poll_info);
     for(;;)
     {
-        create_poll(poll_info);
-        check_for_event(poll_info, sock_fd);
+        check_for_event(&poll_info, sock_fd, listener);
     } // END for(;;)
 }
 
