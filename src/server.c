@@ -139,25 +139,25 @@ void handle_new_connection(Poll_Info *pi, int listener) {
     if (new_fd == -1) {
         perror("accept");
         return;
-    }
+    } else {
+        printf("Debug: (Before) fd_count=%d, fd_size=%d\n", pi->fd_count, pi->fd_size);
+        add_to_pfds(pi, new_fd);
 
-    printf("Debug: (Before) fd_count=%d, fd_size=%d\n", pi->fd_count, pi->fd_size);
-    add_to_pfds(pi, new_fd);
+        printf("Debug: (After) fd_count=%d, fd_size=%d\n", pi->fd_count, pi->fd_size);
 
-    printf("Debug: (After) fd_count=%d, fd_size=%d\n", pi->fd_count, pi->fd_size);
+        // Log the new connection
+        printf("Pollserver: new connection from %s on socket %d\n", 
+                inet_ntop(client_addr.ss_family, 
+                    to_sockaddr_in((struct sockaddr*)&client_addr),
+                    client_ip,
+                    sizeof(client_ip)),
+                new_fd
+              );
 
-    // Log the new connection
-    printf("Pollserver: new connection from %s on socket %d\n", 
-            inet_ntop(client_addr.ss_family, 
-                to_sockaddr_in((struct sockaddr*)&client_addr),
-                client_ip,
-                sizeof(client_ip)),
-            new_fd
-          );
-
-    // Send a welcome message
-    if (send(new_fd, "Welcome!", 8, 0) == -1) {
-        perror("send");
+        // Send a welcome message
+        if (send(new_fd, "Welcome!", 8, 0) == -1) {
+            perror("send");
+        }
     }
 }
 
@@ -195,8 +195,7 @@ void on_poll(int listener, Poll_Info *pi, int index) {
 
         } else { // We got data from client
             printf("Debug: Broadcasting message\n");
-            broadcast_message(*pi, listener, sender_fd, nbytes, buf);
-        }
+            broadcast_message(*pi, listener, sender_fd, nbytes, buf); }
     } // END handle data from poll
 
     printf("Debug: Exiting on_poll\n");
@@ -243,9 +242,9 @@ int create_server() {
 
     printf("Server: Waiting for connections on: %s ...\n", ADDR);
 
-    create_poll(poll_info);
     for(;;)
     {
+        create_poll(poll_info);
         check_for_event(&poll_info, sock_fd, listener);
     } // END for(;;)
 }
