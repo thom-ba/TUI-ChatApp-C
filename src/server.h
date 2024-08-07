@@ -13,6 +13,7 @@
 #include "common.h"
 
 #define FD_START_SIZE 5 
+#define POLL_TIMEOUT -1
 
 // Structs
 typedef struct {

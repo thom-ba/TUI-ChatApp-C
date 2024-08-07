@@ -103,8 +103,51 @@ int send_all(int fd, char *buf, int *len) {
     return n==-1?-1:0;
 }
 
+
+// TODO: Send from Client
+void send_welcome_message() {
+}
+
+void receive_data_from_client() {
+}
+
+void broadcast_message() {
+}
+
+void close_connection()  {
+
+}
+
+void handle_new_connection(int sock_fd, Poll_Info pi, int listener) {
+    struct sockaddr_storage client_addr;
+    char client_ip[INET_ADDRSTRLEN];
+    socklen_t addr_len; 
+
+    int new_fd; 
+    if ((new_fd = accept(listener, (struct sockaddr *)&client_addr, &addr_len) ) == -1) {
+        perror("accept");
+    }
+    else {
+        add_to_pfds(&pi.pfds, new_fd, &pi.fd_count, &pi.fd_size);
+
+        // TODO: Logging Library
+        printf("Pollserver: new connection from %s on socket %d\n", 
+                inet_ntop(client_addr.ss_family, 
+                    to_sockaddr_in((struct sockaddr*) &client_addr),
+                    client_ip,
+                    INET6_ADDRSTRLEN),
+                new_fd
+              );
+        
+        // Client
+        if (send(new_fd, "Welcome!", 8, 0) == -1) {
+            perror("welcome");
+        }
+    }
+   
+}
 // TODO: BIG TODO: This is a mess, needs to be cleaned up
-void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_size) {
+void on_poll(int sock_fd, Poll_Info pi, int index) {
     char client_ip[INET6_ADDRSTRLEN];
     struct sockaddr_storage client_addr;
     int listener = get_listener(sock_fd);
@@ -112,29 +155,16 @@ void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_s
     char buf[256];
 
     int new_fd; 
-    if (pfds[index].fd == listener) { // Is our listener
-        if ((new_fd = accept(listener, (struct sockaddr *)&client_addr, &addr_len) ) == -1) {
-            perror("accept");
-        }
-        else {
-            add_to_pfds(&pfds, new_fd, &fd_count, &fd_size);
-
-            printf("Pollserver: new connection from %s on socket %d\n", 
-                    inet_ntop(client_addr.ss_family, 
-                        to_sockaddr_in((struct sockaddr*) &client_addr),
-                        client_ip,
-                        INET6_ADDRSTRLEN),
-                    new_fd
-                  );
-
-            if (send(new_fd, "Welcome!", 8, 0) == -1) {
-                perror("welcome");
-            }
-        }
+    if (pi.pfds[index].fd == listener) { // Is our listener
+        // Handle Connection
+        handle_new_connection(sock_fd, pi, listener);
     } else {
+        // overwrite the buffer or we overwrite it again
         memset(buf, 0, sizeof(buf)); 
-        int nbytes = recv(pfds[index].fd, buf, sizeof buf, 0);
-        int sender_fd = pfds[index].fd;
+    
+        // Receive Data from Client  { close_connection else broadcast_message }
+        int nbytes = recv(pi.pfds[index].fd, buf, sizeof buf, 0);
+        int sender_fd = pi.pfds[index].fd;
 
         if (nbytes == 0) { // Got an error or connection closed
             if (nbytes <= 0) {
@@ -144,11 +174,11 @@ void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_s
             }
 
             close(sender_fd);
-            del_from_pfds(pfds, index, &fd_count);
+            del_from_pfds(pi.pfds, index, &pi.fd_count);
 
         } else { // We got data from client
-            for (int j = 0; j < fd_count; j++) {
-                int dst_fd = pfds[j].fd;
+            for (int j = 0; j < pi.fd_count; j++) {
+                int dst_fd = pi.pfds[j].fd;
 
                 // Except the listener and ourselves
                 if (dst_fd != listener && dst_fd != sender_fd) {
@@ -158,8 +188,6 @@ void on_poll(int sock_fd, struct pollfd *pfds, int index, int fd_count, int fd_s
                         perror("send");
                     }
                 }
-
-                // need to clear the buffer, otherwise we just overwrite it the next time 
             } 
         }
     } // END handle data from poll
@@ -169,6 +197,23 @@ void init_poll_info(Poll_Info *pi) {
     pi->fd_count = 0;
     pi->fd_size = FD_START_SIZE;
     pi->pfds = malloc(sizeof *pi->pfds * pi->fd_size);
+}
+
+void create_poll(Poll_Info pi) {
+    int poll_count = poll(pi.pfds, pi.fd_count, -1);
+    if (poll_count == -1) {
+        perror("poll");
+        exit(1);
+    }
+}
+
+void check_for_event(Poll_Info poll_info,int sock_fd) {
+    for (int i = 0; i < poll_info.fd_count; i++) { // Loop through all file_descriptors
+        if (poll_info.pfds[i].revents & POLLIN) { // We got an event
+            on_poll(sock_fd, poll_info, i);
+
+        } // END got an event
+    } // END looping through file descriptors
 }
 
 int create_server() {
@@ -190,18 +235,8 @@ int create_server() {
 
     for(;;)
     {
-        int poll_count = poll(poll_info.pfds, poll_info.fd_count, -1);
-        if (poll_count == -1) {
-            perror("poll");
-            exit(1);
-        }
-
-        for (int i = 0; i < poll_info.fd_count; i++) { // Loop through all file_descriptors
-            if (poll_info.pfds[i].revents & POLLIN) { // We got an event
-              on_poll(sock_fd, poll_info.pfds, i, poll_info.fd_count, poll_info.fd_size); 
-               
-            } // END got an event
-        } // END looping through file descriptors
+        create_poll(poll_info);
+        check_for_event(poll_info, sock_fd);
     } // END for(;;)
 }
 
