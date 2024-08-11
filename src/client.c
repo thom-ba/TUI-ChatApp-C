@@ -2,6 +2,7 @@
 // For further information read the comment at the end of the file.
 
 #include "client.h"
+#include "client_interface.h"
 
 // Description: todo
 void* handle_receive_message(void* arg)  {
@@ -85,7 +86,8 @@ void create_and_connect_socket(int *sock_fd) {
 
         if(connect(*sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
             close(*sock_fd);
-            perror("Client: connect");
+            
+            print_connected(); 
             continue;
         }
 
@@ -93,7 +95,8 @@ void create_and_connect_socket(int *sock_fd) {
     }
 
     if (p == NULL) {
-        fprintf(stderr, "Client: failed to connect!\n");
+        print_no_server();
+
         exit(2);
     }
     
@@ -103,6 +106,7 @@ void create_and_connect_socket(int *sock_fd) {
 
 
 void create_client() {
+    print_loading();
     int sock_fd;
    
     struct addrinfo *servinfo = get_server_info(); 
@@ -134,6 +138,8 @@ void create_client() {
 }
 
 int main(void) {
+    init();
+
     create_client();
 
     return EXIT_SUCCESS;

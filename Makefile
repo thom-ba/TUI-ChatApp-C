@@ -1,51 +1,54 @@
-# Variables
+
+# Compiler and flags
 CC = gcc
-CCFLAGS = -Wall -g
-LDFLAGS = 
-SRC_DIR = src
-OBJ_DIR = obj
-BIN_DIR = bin
+CFLAGS = -Wall -Wextra -I./src
+LDFLAGS =
 
-# Source and Object files
-CLIENT_SRC = $(SRC_DIR)/client.c
-SERVER_SRC = $(SRC_DIR)/server.c
-CLIENT_OBJ = $(OBJ_DIR)/client.o
-SERVER_OBJ = $(OBJ_DIR)/server.o
-CLIENT_EXEC = $(BIN_DIR)/client
-SERVER_EXEC = $(BIN_DIR)/server
+# Directories
+SRCDIR = src
+OBJDIR = obj
+BINDIR = bin
+DOCDIR = docs
 
-# Targets
-all: $(CLIENT_EXEC) $(SERVER_EXEC)
+# Source files
+SERVER_SRC = $(SRCDIR)/server.c $(SRCDIR)/client_interface.c $(SRCDIR)/term_utils.c
+CLIENT_SRC = $(SRCDIR)/client.c $(SRCDIR)/client_interface.c $(SRCDIR)/term_utils.c
 
-# Link the client executable
-$(CLIENT_EXEC): $(CLIENT_OBJ) $(MAIN_OBJ)
-	@mkdir -p $(BIN_DIR)
-	$(CC) $(LDFLAGS) -o $@ $(CLIENT_OBJ) $(MAIN_OBJ)
+# Object files
+SERVER_OBJ = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SERVER_SRC))
+CLIENT_OBJ = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CLIENT_SRC))
 
-# Link the server executable
-$(SERVER_EXEC): $(SERVER_OBJ) $(MAIN_OBJ)
-	@mkdir -p $(BIN_DIR)
-	$(CC) $(LDFLAGS) -o $@ $(SERVER_OBJ) $(MAIN_OBJ)
+# Executables
+SERVER_EXEC = $(BINDIR)/server
+CLIENT_EXEC = $(BINDIR)/client
 
-# Compile client source file to object file
-$(OBJ_DIR)/client.o: $(CLIENT_SRC)
-	@mkdir -p $(OBJ_DIR)
-	$(CC) $(CCFLAGS) -c -o $@ $<
+# Default target
+all: $(SERVER_EXEC) $(CLIENT_EXEC)
 
-# Compile server source file to object file
-$(OBJ_DIR)/server.o: $(SERVER_SRC)
-	@mkdir -p $(OBJ_DIR)
-	$(CC) $(CCFLAGS) -c -o $@ $<
+# Rule to link the server executable
+$(SERVER_EXEC): $(SERVER_OBJ)
+	@mkdir -p $(BINDIR)
+	$(CC) $(LDFLAGS) -o $@ $^
 
-# Compile main source file to object file
-$(OBJ_DIR)/main.o: $(MAIN_SRC)
-	@mkdir -p $(OBJ_DIR)
-	$(CC) $(CCFLAGS) -c -o $@ $<
+# Rule to link the client executable
+$(CLIENT_EXEC): $(CLIENT_OBJ)
+	@mkdir -p $(BINDIR)
+	$(CC) $(LDFLAGS) -o $@ $^
 
-# Clean up build artifacts
+# Rule to compile source files into object files
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Rule to generate documentation (assuming docs.md needs to be processed in some way)
+docs: $(DOCDIR)/docs.md
+	cp $(DOCDIR)/docs.md $(DOCDIR)/docs.html # Placeholder for real doc processing
+
+# Rule to clean the build artifacts
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -f $(OBJDIR)/*.o $(SERVER_EXEC) $(CLIENT_EXEC)
+	rm -f $(DOCDIR)/docs.html # Clean up documentation output if necessary
 
 # Phony targets
-.PHONY: all clean
+.PHONY: all clean docs
 
