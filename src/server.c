@@ -230,7 +230,7 @@ on_poll (int listener, Poll_Info *pi, int index)
           else
             {
               perror ("recv");
-            }
+			}
 
           close (sender_fd);
           del_from_pfds (pi->pfds, index, &pi->fd_count);
