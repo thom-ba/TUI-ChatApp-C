@@ -3,8 +3,10 @@
 
 void init();
 
+char* print_create_user();
 void print_loading();
 void print_no_server();
 void print_connected(); 
+
 
 #endif // CLIENT_INTERFACE_H
