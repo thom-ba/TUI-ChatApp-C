@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stdlib.h>
+
 
 #include "term_utils.h"
 
@@ -20,7 +22,7 @@ void init() {
 }
 
 char* print_create_user()  {
-	char username[26];
+	char buffer[48];
 	
 	clear_term();
 	int create_user_length = strlen(NEUTRAL_CREATE_CLIENT);
@@ -29,11 +31,14 @@ char* print_create_user()  {
 	printf("%s", NEUTRAL_CREATE_CLIENT);
 	fflush(stdout);
 	
-	//TODO: wait for username
-	fgets(username, sizeof(username), stdin);
+	fgets(buffer, sizeof(buffer), stdin);
 	
-	printf("Username: %s", username);
-
+	buffer[strcspn(buffer, "\n")] = '\0';
+	
+	char* username = malloc(strlen(buffer) +1);
+	
+	strcpy(username, buffer);
+	
 	clear_term();
 	
 	return username;
