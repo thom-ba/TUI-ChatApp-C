@@ -9,6 +9,8 @@
 #include "common.h"
 
 // Function Prototypes
+void msg_wuser(char** msg, const char* input);
+
 void *handle_receive_message (void *arg);
 
 void *handle_input (void *arg);

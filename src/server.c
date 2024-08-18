@@ -214,7 +214,6 @@ on_poll (int listener, Poll_Info *pi, int index)
       printf ("Debug: Got data from client\n");
       printf ("Debug: Buffer: %s", buf);
 
-      // Clear the buffer
       memset (buf, 0, sizeof (buf));
 
       // Receive Data from Client

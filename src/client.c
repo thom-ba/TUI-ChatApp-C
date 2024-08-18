@@ -1,10 +1,25 @@
 // (C) Thomas Baumeister, 2024
 // For further information read the comment at the end of the file.
 
+#include <stdbool.h>
+
 #include "client.h"
 #include "client_interface.h"
 
-void send_username (const char *username, int sock_fd);
+bool
+is_empty(const char* str) {
+	return str[0] == '\0';
+}
+
+char* username = "";
+void msg_wuser(char** msg, const char *input) {
+	if (is_empty(username)) {
+		perror("Username empty?");
+		exit(1);
+	}
+	
+	asprintf(msg, "%s: %s\n", username, input);
+}
 
 // Description: todo
 void *
@@ -24,7 +39,7 @@ handle_receive_message (void *arg)
 
       buf[numbytes] = '\0';
 
-      printf ("Client: received: '%s'\n", buf);
+      printf ("%s\n", buf);
       fflush (stdout);
 
       memset (buf, 0, MAXDATASIZE);
@@ -37,20 +52,27 @@ handle_input (void *arg)
 {
   int sock_fd = *((int *)arg);
   char input[1024];
-
+  char* formatted_msg = ""; 
+  
   while (1)
     {
+	  fflush(stdout);
       printf ("Enter Message: ");
-
+	  fflush(stdout);
+		
       if (fgets (input, sizeof (input), stdin) != NULL)
         {
           input[strcspn (input, "\n")] = '\0';
-
-          if (send (sock_fd, input, strlen (input), 0) == -1)
+		  msg_wuser(&formatted_msg, input);
+			
+          if (send (sock_fd, formatted_msg, strlen (formatted_msg), 0) == -1)
             {
               perror ("send");
               pthread_exit (NULL);
             }
+			
+			free(formatted_msg);
+			formatted_msg = "";
         }
       else
         {
@@ -124,25 +146,9 @@ create_and_connect_socket (int *sock_fd)
 
   // Success
   print_connected ();
-  char *username = print_create_user ();
-  send_username (username, *sock_fd);
+  username = print_create_user ();
 
   network_to_string (s, p);
-}
-
-// TODO: Dont send username, rather sprintf username
-// in the beginning of each message
-void
-send_username (const char *username, int sock_fd)
-{
-  if (send (sock_fd, username, strlen (username), 0) == -1)
-    {
-      perror ("Send username");
-    }
-  else
-    {
-      printf ("Success sending username");
-    }
 }
 
 void
