@@ -9,16 +9,16 @@
 #include "common.h"
 
 // Function Prototypes
-void* handle_receive_message(void* arg);
+void *handle_receive_message (void *arg);
 
-void* handle_input(void *arg);
+void *handle_input (void *arg);
 
-struct addrinfo *get_server_info();
+struct addrinfo *get_server_info ();
 
-void network_to_string(char *s, const struct addrinfo *p);
+void network_to_string (char *s, const struct addrinfo *p);
 
-void create_and_connect_socket(int *sock_fd);
+void create_and_connect_socket (int *sock_fd);
 
-void create_client();
+void create_client ();
 
 #endif // CLIENT_H
