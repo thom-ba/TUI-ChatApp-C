@@ -4,6 +4,8 @@
 #include "client.h"
 #include "client_interface.h"
 
+void send_username(const char* username, int sock_fd);
+
 // Description: todo
 void* handle_receive_message(void* arg)  {
   int sock_fd = *((int*) arg); 
@@ -102,12 +104,17 @@ void create_and_connect_socket(int *sock_fd) {
   // Success
   print_connected();
   char*  username = print_create_user();
+	send_username(username, *sock_fd);
 
   network_to_string(s, p);
 }
 
-void send_username(int sock_fd) {
-	
+void send_username(const char* username, int sock_fd) {
+	if(send(sock_fd, username, strlen(username), 0) == -1) {
+		perror("Send username");
+	} else  {
+		printf("Success sending username");
+	}
 }
 
 void create_client() {
@@ -130,7 +137,7 @@ void create_client() {
     exit(1);
   }
 
-  // handle user input and sen
+  // handle user input and send
   int send_fd = sock_fd;
   pthread_t input_thread;
   if (pthread_create(&input_thread, NULL, &handle_input, (void*) &send_fd) != 0) {
