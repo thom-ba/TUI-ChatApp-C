@@ -6,141 +6,149 @@
 
 // Description: todo
 void* handle_receive_message(void* arg)  {
-    int sock_fd = *((int*) arg); 
-    int numbytes;
-    char buf[MAXDATASIZE];
-    
-    while(1) {
-        if ( (numbytes = recv(sock_fd, buf, MAXDATASIZE-1, 0) ) == -1) {
-            perror("recv");
-            pthread_exit(NULL);
-        }
+  int sock_fd = *((int*) arg); 
+  int numbytes;
+  char buf[MAXDATASIZE];
 
-        buf[numbytes] = '\0';
-
-        printf("Client: received: '%s'\n", buf);
-        fflush(stdout);
-
-        memset(buf, 0, MAXDATASIZE);
+  while(1) {
+    if ( (numbytes = recv(sock_fd, buf, MAXDATASIZE-1, 0) ) == -1) {
+      perror("recv");
+      pthread_exit(NULL);
     }
-    return NULL;
+
+    buf[numbytes] = '\0';
+
+    printf("Client: received: '%s'\n", buf);
+    fflush(stdout);
+
+    memset(buf, 0, MAXDATASIZE);
+  }
+  return NULL;
 }
 
 void* handle_input(void *arg) {
-    int sock_fd = *((int*) arg);
-    char input[1024];
+  int sock_fd = *((int*) arg);
+  char input[1024];
 
-    while(1) {
-        printf("Enter Message: ");
+  while(1) {
+    printf("Enter Message: ");
 
-        if (fgets(input, sizeof(input), stdin) != NULL) {
-            input[strcspn(input, "\n")] = '\0';
+    if (fgets(input, sizeof(input), stdin) != NULL) {
+      input[strcspn(input, "\n")] = '\0';
 
-            if(send(sock_fd, input, strlen(input), 0) == -1) {
-                perror("send");
-                pthread_exit(NULL);
-            }
-        } else {
-            perror("fgets");
-            pthread_exit(NULL);
+      if(send(sock_fd, input, strlen(input), 0) == -1) {
+        perror("send");
+        pthread_exit(NULL);
+      }
+    } else {
+      perror("fgets");
+      pthread_exit(NULL);
 
-        }
-
-        memset(input, 0, sizeof(input));
     }
 
-    return NULL;
+    memset(input, 0, sizeof(input));
+  }
+
+  return NULL;
 }
 
 struct addrinfo *get_server_info() { 
-    struct addrinfo hints, *servinfo;
-    int rv;
+  struct addrinfo hints, *servinfo;
+  int rv;
 
-    memset(&hints, 0, sizeof hints); // make sure the struct is empty
-    hints.ai_family = AF_UNSPEC;    // use any address family
-    hints.ai_socktype = SOCK_STREAM; // use TCP
+  memset(&hints, 0, sizeof hints); // make sure the struct is empty
+  hints.ai_family = AF_UNSPEC;    // use any address family
+  hints.ai_socktype = SOCK_STREAM; // use TCP
 
-    if ( (rv = getaddrinfo(ADDR, PORT, &hints, &servinfo) ) == -1) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        exit(1);
-    }
+  if ( (rv = getaddrinfo(ADDR, PORT, &hints, &servinfo) ) == -1) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    exit(1);
+  }
 
-    return servinfo;
+  return servinfo;
 }
 
 void network_to_string(char *s, const struct addrinfo *p)  {
-    inet_ntop(p->ai_family, &((struct sockaddr_in *)p->ai_addr)->sin_addr, s, sizeof *s);
+  inet_ntop(p->ai_family, &((struct sockaddr_in *)p->ai_addr)->sin_addr, s, sizeof *s);
 }
 
 void create_and_connect_socket(int *sock_fd) {
-    char s[INET6_ADDRSTRLEN];
-    struct addrinfo *p;
-    
-    struct addrinfo *servinfo = get_server_info();
-    for (p = servinfo; p != NULL; p = p->ai_next) {
-        if ((*sock_fd = socket(p->ai_family, p->ai_socktype,
-                        p->ai_protocol)) == -1) {
-            perror("Client: socket");
-            continue;
-        }
+  char s[INET6_ADDRSTRLEN];
+  struct addrinfo *p;
 
-        if(connect(*sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(*sock_fd);
-            
-            print_connected(); 
-            continue;
-        }
-
-        break;
+  struct addrinfo *servinfo = get_server_info();
+  for (p = servinfo; p != NULL; p = p->ai_next) {
+    if ((*sock_fd = socket(p->ai_family, p->ai_socktype,
+                           p->ai_protocol)) == -1) {
+      perror("Client: socket");
+      continue;
     }
 
-    if (p == NULL) {
-        print_no_server();
+    if(connect(*sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(*sock_fd);
 
-        exit(2);
+      continue;
     }
-    
-    network_to_string(s, p);
-    printf("Client: connected to: %s\n", s);
+
+    break;
+  }
+
+  if (p == NULL) {
+    print_no_server();
+
+    exit(2);
+  }
+	
+  // Success
+  print_connected();
+  char*  username = print_create_user();
+
+  network_to_string(s, p);
 }
 
+void send_username(int sock_fd) {
+	
+}
 
 void create_client() {
-    print_loading();
-    int sock_fd;
-   
-    struct addrinfo *servinfo = get_server_info(); 
-    create_and_connect_socket(&sock_fd); 
+  print_loading();
+  
+  sleep(2);
+  
+  int sock_fd;
 
-    freeaddrinfo(servinfo);
+  struct addrinfo *servinfo = get_server_info(); 
+  create_and_connect_socket(&sock_fd); 
 
-    // receive message
-    int receive_fd = sock_fd;
-    pthread_t receive_thread; 
-    if (pthread_create(&receive_thread, NULL,  &handle_receive_message, &receive_fd) != 0) {
-        perror("pthread_create");
-        exit(1);
-    }
+  freeaddrinfo(servinfo);
 
-    // handle user input and sen
-    int send_fd = sock_fd;
-    pthread_t input_thread;
-    if (pthread_create(&input_thread, NULL, &handle_input, (void*) &send_fd) != 0) {
-        perror("pthread_create");
-        exit(1);
-    }
+  // receive message
+  int receive_fd = sock_fd;
+  pthread_t receive_thread; 
+  if (pthread_create(&receive_thread, NULL,  &handle_receive_message, &receive_fd) != 0) {
+    perror("pthread_create");
+    exit(1);
+  }
 
-    pthread_join(receive_thread, NULL);
-    pthread_join(input_thread, NULL); 
+  // handle user input and sen
+  int send_fd = sock_fd;
+  pthread_t input_thread;
+  if (pthread_create(&input_thread, NULL, &handle_input, (void*) &send_fd) != 0) {
+    perror("pthread_create");
+    exit(1);
+  }
 
-    // close the connection to the server
-    close(sock_fd);
+  pthread_join(receive_thread, NULL);
+  pthread_join(input_thread, NULL); 
+
+  // close the connection to the server
+  close(sock_fd);
 }
 
 int main(void) {
-    init();
+  init();
 
-    create_client();
+  create_client();
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
