@@ -72,7 +72,6 @@ void print_buffer(char** buf) {
     fflush(stdout);
 }
 
-bool first = true;
 void print_room(char* msg) {
     buff_size = rows;
     
@@ -95,7 +94,6 @@ void print_room(char* msg) {
     }
     
     print_buffer(msg_buf);
-      
     
     // Print bottom input line
     move_cur(rows - 1, 0);
@@ -107,7 +105,6 @@ void print_room(char* msg) {
 
     printf("Enter message: ");
     
-    first = false;
 }
 
 void
