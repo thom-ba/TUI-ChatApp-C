@@ -140,7 +140,7 @@ broadcast_message (Poll_Info pi, int listener, int sender_fd, int nbytes,
       int dst_fd = pi.pfds[j].fd;
 
       // Except the listener and ourselves
-      if (dst_fd != listener && dst_fd != sender_fd)
+      if (dst_fd != listener)
         {
           printf ("Debug: nbytes: %d\n", nbytes);
           printf ("Debug: buf: %s\n", buf);
@@ -188,7 +188,7 @@ handle_new_connection (Poll_Info *pi, int listener)
               new_fd);
 
       // Send a welcome message
-      if (send (new_fd, "Welcome!", 8, 0) == -1)
+    if (send (new_fd, "Welcome!\n", 12, 0) == -1)
         {
           perror ("send");
         }

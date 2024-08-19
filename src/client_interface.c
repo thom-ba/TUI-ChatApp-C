@@ -1,7 +1,9 @@
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "term_utils.h"
+
 
 const char *SUCCES_CONNECTED = "Connected successfully!";
 
@@ -48,9 +50,64 @@ print_create_user ()
   return username;
 }
 
-void
-print_room ()
-{
+bool
+is_emptyy(const char* str) {
+	return str[0] == '\0';
+}
+
+#define NEUTRAL_BOX_CHAR "─"
+int msg_count = 0;
+int buff_size = 100;
+char** msg_buf = NULL;
+
+void shift_buffer(char** buff) {
+    memmove(buff, buff +1, msg_count -1 * sizeof(char*));
+}
+
+void print_buffer(char** buf) {
+    for(int i = 0; i < msg_count; i++) {
+        printf("%s", buf[i]);
+    }
+    printf("\n");
+    fflush(stdout);
+}
+
+bool first = true;
+void print_room(char* msg) {
+    buff_size = rows;
+    
+    clear_term();
+
+    if (msg_buf == NULL) {
+        msg_buf = malloc(buff_size * sizeof(char*));
+        for (int i = 0; i < buff_size; ++i) {
+            msg_buf[i] = NULL;
+        }
+    }
+
+    msg_buf[msg_count] = strdup(msg);
+    msg_count++;
+
+    if (msg_count == buff_size) {
+        free(msg_buf[0]);
+        memmove(msg_buf, msg_buf + 1, (buff_size - 1) * sizeof(char*));
+        msg_count--;
+    }
+    
+    print_buffer(msg_buf);
+      
+    
+    // Print bottom input line
+    move_cur(rows - 1, 0);
+    for (int i = 0; i < cols; i++) {
+        printf(NEUTRAL_BOX_CHAR);
+    }
+    printf("\n");
+    fflush(stdout);
+
+    printf("Enter message: ");
+    
+    first = false;
 }
 
 void
@@ -89,7 +146,7 @@ print_connected ()
   printf ("%s", SUCCES_CONNECTED);
   fflush (stdout);
 
-  sleep (1);
+  usleep(500000);
 
   clear_term ();
 }
