@@ -57,7 +57,7 @@ is_emptyy(const char* str) {
 
 #define NEUTRAL_BOX_CHAR "─"
 int msg_count = 0;
-int buf_size = 10;
+int buff_size = 15;
 char** msg_buf = NULL;
 
 void
@@ -66,13 +66,14 @@ print_room(char* msg)
     clear_term();
  
     if(msg_buf == NULL) {
-        msg_buf = malloc(buf_size * sizeof(char*));
+        msg_buf = malloc(buff_size * sizeof(char*));
         
         // Initialize the buffer to NULL
-        for (int i = 0; i < buf_size; ++i) {
+        for (int i = 0; i < buff_size; ++i) {
             msg_buf[i] = malloc(56 * sizeof(char));
         }
     }
+    //TODO-> Reallocate memory stuff blablabla
     
     // Display all messages
     if(!is_emptyy(msg)) {
@@ -80,8 +81,12 @@ print_room(char* msg)
         // move_cur(msg_count, 0);
         msg_buf[msg_count] = strdup(msg);
         
-        for (int i = 0; i < sizeof(msg_buf); i++)  {
+        for (int i = 0; i < buff_size; i++)  {
             printf("%s", msg_buf[i]);
+            if(i == 0) {
+                printf("\n");
+                fflush(stdout);
+            }
         }
         
         fflush(stdout);

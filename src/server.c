@@ -188,7 +188,7 @@ handle_new_connection (Poll_Info *pi, int listener)
               new_fd);
 
       // Send a welcome message
-      if (send (new_fd, "Welcome!", 8, 0) == -1)
+    if (send (new_fd, "Welcome!", 12, 0) == -1)
         {
           perror ("send");
         }
