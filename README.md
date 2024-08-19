@@ -63,8 +63,8 @@ The client will prompt you to enter your username. After entering your username,
 
 ## License
 
-This project is dedicated to the public domain. You are free to use, modify, and distribute this software as you wish. For more details, see the [UNLICENSE](http://unilicense.org) file.
-
+This project is dedicated to the public domain. You are free to use, modify, and distribute this software as you wish. 
+For more information, please refer to <http://unlicense.org/>.
 ## Author
 
 Thomas Baumeister
