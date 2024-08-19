@@ -57,52 +57,57 @@ is_emptyy(const char* str) {
 
 #define NEUTRAL_BOX_CHAR "─"
 int msg_count = 0;
-int buff_size = 15;
+int buff_size = 100;
 char** msg_buf = NULL;
 
-void
-print_room(char* msg)
-{
+void shift_buffer(char** buff) {
+    memmove(buff, buff +1, msg_count -1 * sizeof(char*));
+}
+
+void print_buffer(char** buf) {
+    for(int i = 0; i < msg_count; i++) {
+        printf("%s", buf[i]);
+    }
+    printf("\n");
+    fflush(stdout);
+}
+
+bool first = true;
+void print_room(char* msg) {
+    buff_size = rows;
+    
     clear_term();
- 
-    if(msg_buf == NULL) {
+
+    if (msg_buf == NULL) {
         msg_buf = malloc(buff_size * sizeof(char*));
-        
-        // Initialize the buffer to NULL
         for (int i = 0; i < buff_size; ++i) {
-            msg_buf[i] = malloc(56 * sizeof(char));
+            msg_buf[i] = NULL;
         }
     }
-    //TODO-> Reallocate memory stuff blablabla
-    
-    // Display all messages
-    if(!is_emptyy(msg)) {
-        msg[strlen(msg)] = '\0';
-        // move_cur(msg_count, 0);
-        msg_buf[msg_count] = strdup(msg);
-        
-        for (int i = 0; i < buff_size; i++)  {
-            printf("%s", msg_buf[i]);
-            if(i == 0) {
-                printf("\n");
-                fflush(stdout);
-            }
-        }
-        
-        fflush(stdout);
-        msg_count++;
+
+    msg_buf[msg_count] = strdup(msg);
+    msg_count++;
+
+    if (msg_count == buff_size) {
+        free(msg_buf[0]);
+        memmove(msg_buf, msg_buf + 1, (buff_size - 1) * sizeof(char*));
+        msg_count--;
     }
     
-    // Display bottom input line
-    move_cur(rows-2, 0);
+    print_buffer(msg_buf);
+      
     
-    for(int i = 0; i < cols; i++) {
+    // Print bottom input line
+    move_cur(rows - 1, 0);
+    for (int i = 0; i < cols; i++) {
         printf(NEUTRAL_BOX_CHAR);
     }
     printf("\n");
     fflush(stdout);
 
     printf("Enter message: ");
+    
+    first = false;
 }
 
 void
