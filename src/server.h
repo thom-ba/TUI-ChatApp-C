@@ -26,8 +26,7 @@ typedef struct
 // Function Prototypes
 void *to_sockaddr_in (struct sockaddr *sa);
 
-void
-sigchld_handler ();
+void sigchld_handler ();
 
 void set_sock_opt (int sock_fd);
 

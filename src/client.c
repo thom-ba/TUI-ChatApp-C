@@ -7,18 +7,22 @@
 #include "client_interface.h"
 
 bool
-is_empty(const char* str) {
-	return str[0] == '\0';
+is_empty (const char *str)
+{
+  return str[0] == '\0';
 }
 
-char* username = "";
-void msg_wuser(char** msg, const char *input) {
-	if (is_empty(username)) {
-		perror("Username empty?");
-		exit(1);
-	}
-	
-	asprintf(msg, "%s: %s\n", username, input);
+char *username = "";
+void
+msg_wuser (char **msg, const char *input)
+{
+  if (is_empty (username))
+    {
+      perror ("Username empty?");
+      exit (1);
+    }
+
+  asprintf (msg, "%s: %s\n", username, input);
 }
 
 // Description: todo
@@ -38,8 +42,8 @@ handle_receive_message (void *arg)
         }
 
       buf[numbytes] = '\0';
-    
-      print_room(buf);
+
+      print_room (buf);
       // printf ("%s\n", buf);
       fflush (stdout);
 
@@ -53,23 +57,23 @@ handle_input (void *arg)
 {
   int sock_fd = *((int *)arg);
   char input[1024];
-  char* formatted_msg = ""; 
-  
+  char *formatted_msg = "";
+
   while (1)
     {
       if (fgets (input, sizeof (input), stdin) != NULL)
         {
           input[strcspn (input, "\n")] = '\0';
-		  msg_wuser(&formatted_msg, input);
-			
+          msg_wuser (&formatted_msg, input);
+
           if (send (sock_fd, formatted_msg, strlen (formatted_msg), 0) == -1)
             {
               perror ("send");
               pthread_exit (NULL);
             }
-			
-			free(formatted_msg);
-			formatted_msg = "";
+
+          free (formatted_msg);
+          formatted_msg = "";
         }
       else
         {
@@ -153,8 +157,8 @@ create_client ()
 {
   print_loading ();
 
-    sleep (2);
-   
+  sleep (2);
+
   int sock_fd;
 
   struct addrinfo *servinfo = get_server_info ();

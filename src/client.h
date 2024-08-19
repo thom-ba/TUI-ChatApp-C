@@ -9,9 +9,9 @@
 #include "common.h"
 
 // Function Prototypes
-void msg_wuser(char** msg, const char* input);
+void msg_wuser (char **msg, const char *input);
 
-void* handle_receive_message(void* arg);
+void *handle_receive_message (void *arg);
 
 void *handle_input (void *arg);
 
@@ -22,6 +22,5 @@ void network_to_string (char *s, const struct addrinfo *p);
 void create_and_connect_socket (int *sock_fd);
 
 void create_client ();
-
 
 #endif // CLIENT_H
