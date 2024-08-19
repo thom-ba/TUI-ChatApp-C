@@ -38,8 +38,9 @@ handle_receive_message (void *arg)
         }
 
       buf[numbytes] = '\0';
-
-      printf ("%s\n", buf);
+    
+      print_room(buf);
+      // printf ("%s\n", buf);
       fflush (stdout);
 
       memset (buf, 0, MAXDATASIZE);
@@ -56,10 +57,6 @@ handle_input (void *arg)
   
   while (1)
     {
-	  fflush(stdout);
-      printf ("Enter Message: ");
-	  fflush(stdout);
-		
       if (fgets (input, sizeof (input), stdin) != NULL)
         {
           input[strcspn (input, "\n")] = '\0';
@@ -156,8 +153,8 @@ create_client ()
 {
   print_loading ();
 
-  sleep (2);
-
+    sleep (2);
+   
   int sock_fd;
 
   struct addrinfo *servinfo = get_server_info ();

@@ -140,7 +140,7 @@ broadcast_message (Poll_Info pi, int listener, int sender_fd, int nbytes,
       int dst_fd = pi.pfds[j].fd;
 
       // Except the listener and ourselves
-      if (dst_fd != listener && dst_fd != sender_fd)
+      if (dst_fd != listener)
         {
           printf ("Debug: nbytes: %d\n", nbytes);
           printf ("Debug: buf: %s\n", buf);
