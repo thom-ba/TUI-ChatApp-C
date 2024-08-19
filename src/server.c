@@ -132,9 +132,6 @@ void
 broadcast_message (Poll_Info pi, int listener, int sender_fd, int nbytes,
                    char *buf)
 {
-  printf ("Debug: Buffer= %s", buf);
-  printf ("Debug: nbytes=%d", nbytes);
-
   for (int j = 0; j < pi.fd_count; j++)
     {
       int dst_fd = pi.pfds[j].fd;
@@ -142,8 +139,6 @@ broadcast_message (Poll_Info pi, int listener, int sender_fd, int nbytes,
       // Except the listener and ourselves
       if (dst_fd != listener)
         {
-          printf ("Debug: nbytes: %d\n", nbytes);
-          printf ("Debug: buf: %s\n", buf);
           if (send (dst_fd, buf, nbytes, 0) == -1)
             {
               perror ("send");
@@ -173,12 +168,7 @@ handle_new_connection (Poll_Info *pi, int listener)
     }
   else
     {
-      printf ("Debug: (Before) fd_count=%d, fd_size=%d\n", pi->fd_count,
-              pi->fd_size);
       add_to_pfds (pi, new_fd);
-
-      printf ("Debug: (After) fd_count=%d, fd_size=%d\n", pi->fd_count,
-              pi->fd_size);
 
       // Log the new connection
       printf ("Pollserver: new connection from %s on socket %d\n",
@@ -201,19 +191,13 @@ on_poll (int listener, Poll_Info *pi, int index)
 {
   char buf[256];
 
-  printf ("Debug: index=%d, fd=%d\n", index, pi->pfds[index].fd);
-
   if (pi->pfds[index].fd == listener)
     { // Is our listener
       // Handle new connection
-      printf ("Debug: Handling new connection\n");
       handle_new_connection (pi, listener);
     }
   else
     {
-      printf ("Debug: Got data from client\n");
-      printf ("Debug: Buffer: %s", buf);
-
       memset (buf, 0, sizeof (buf));
 
       // Receive Data from Client
@@ -237,12 +221,9 @@ on_poll (int listener, Poll_Info *pi, int index)
         }
       else
         { // We got data from client
-          printf ("Debug: Broadcasting message\n");
           broadcast_message (*pi, listener, sender_fd, nbytes, buf);
         }
     } // END handle data from poll
-
-  printf ("Debug: Exiting on_poll\n");
 }
 
 void
@@ -257,7 +238,6 @@ void
 create_poll (Poll_Info pi)
 {
   int poll_count = poll (pi.pfds, pi.fd_count, -1);
-  printf ("Debug: count=%d\n", pi.fd_count);
   if (poll_count == -1)
     {
       perror ("poll");

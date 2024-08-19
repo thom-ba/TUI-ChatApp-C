@@ -44,7 +44,6 @@ handle_receive_message (void *arg)
       buf[numbytes] = '\0';
 
       print_room (buf);
-      // printf ("%s\n", buf);
       fflush (stdout);
 
       memset (buf, 0, MAXDATASIZE);
